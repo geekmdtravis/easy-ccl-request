@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0-1",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=14",
+    "yarn": "please-use-npm"
+  },
+  "scripts": {
+    "start": "tsdx watch",
+    "build": "tsdx build",
+    "test": "tsdx test --silent",
+    "test:watch": "tsdx test --watch --silent",
+    "test:watchall": "tsdx test --watchAll --silent",
+    "lint": "tsdx lint src",
+    "prepare": "tsdx build",
+    "size": "size-limit",
+    "analyze": "size-limit --why",
+    "demo": "npx node demo.js"
+  },
+  "peerDependencies": {},
+  "husky": {
+    "hooks": {
+      "pre-commit": "tsdx lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "name": "easy-ccl-request",
+  "author": "geekmdtravis",
+  "module": "dist/easy-ccl-request.esm.js",
+  "size-limit": [
+    {
+      "path": "dist/easy-ccl-request.cjs.production.min.js",
+      "limit": "10 KB"
+    },
+    {
+      "path": "dist/easy-ccl-request.esm.js",
+      "limit": "10 KB"
+    }
+  ],
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "7.0.5",
+    "@size-limit/webpack": "7.0.5",
+    "@size-limit/webpack-why": "7.0.5",
+    "husky": "7.0.4",
+    "size-limit": "7.0.5",
+    "tsdx": "0.14.1",
+    "tslib": "2.3.1",
+    "typescript": "4.5.4"
+  },
+  "dependencies": {
+    "fast-xml-parser": "4.2.6"
+  },
+  "jest": {
+    "verbose": true,
+    "silent": true,
+    "collectCoverage": true,
+    "testPathIgnorePatterns": [
+      "index.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "index.ts"
+    ]
+  }
+}
