@@ -1,4 +1,4 @@
-import { CclCallParam } from "../makeCclRequestAsync";
+import { CclCallParam } from '../makeCclRequestAsync';
 
 /**
  * Check to see if the error reflects likely being outside of PowerChart.
