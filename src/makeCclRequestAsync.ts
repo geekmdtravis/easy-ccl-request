@@ -1,5 +1,5 @@
 import { PowerChartReturn } from '.';
-import { outsideOfPowerChartError } from './utils';
+import { isCclCallParam, outsideOfPowerChartError } from './utils';
 
 /**
  * An input parameter for a CCL call. In internal testing, there were cases
@@ -182,7 +182,7 @@ export function formattedParams(
       return { type: 'string', param: param };
     } else if (typeof param === 'number') {
       return { type: 'number', param: param };
-    } else if (typeof param === 'object' && param.param && param.type) {
+    } else if (isCclCallParam(param)) {
       return param;
     } else {
       throw new TypeError(
