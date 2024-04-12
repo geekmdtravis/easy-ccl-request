@@ -20,8 +20,7 @@
     "lint": "tsdx lint src",
     "prepare": "tsdx build",
     "size": "size-limit",
-    "analyze": "size-limit --why",
-    "demo": "npx node demo.js"
+    "analyze": "size-limit --why"
   },
   "husky": {
     "hooks": {

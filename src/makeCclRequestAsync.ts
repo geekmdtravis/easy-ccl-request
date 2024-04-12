@@ -1,5 +1,9 @@
 import { PowerChartReturn } from '.';
-import { isCclCallParam, outsideOfPowerChartError } from './utils';
+import {
+  standardizeCclCallParams,
+  errorIndicatesNotInPowerChart,
+  parseResponseJson,
+} from './utils';
 
 /**
  * An input parameter for a CCL call. In internal testing, there were cases
@@ -134,7 +138,7 @@ export async function makeCclRequestAsync<T>(
           res.result = statusCodeMap.get(req.status) || 'unknown';
           res.status = readyStateMap.get(req.readyState) || 'unknown';
           res.details = req.statusText;
-          res.data = parsedResponseText<T>(req.responseText);
+          res.data = parseResponseJson<T>(req.responseText);
           res.__request = req;
           resolve(res);
         } else {
@@ -151,9 +155,9 @@ export async function makeCclRequestAsync<T>(
       };
 
       req.open('GET', `${prg}`);
-      req.send(formattedParams(params, excludeMine));
+      req.send(standardizeCclCallParams(params, excludeMine));
     } catch (e) {
-      if (outsideOfPowerChartError(e)) {
+      if (errorIndicatesNotInPowerChart(e)) {
         res.inPowerChart = false;
         resolve(res);
       } else {
@@ -161,66 +165,6 @@ export async function makeCclRequestAsync<T>(
       }
     }
   });
-}
-
-/**
- * A function which processes the CCL request parameters, converting them to a string compatible with an XmlCclRequest.
- * @param params {Array<CclCallParam|string|number>} An array of CclCallParam objects when explicitly defining
- * type, or strings and numbers when implicitly defining type, each of which represents
- * @param excludeMine {boolean} Determines whether or not to include the "MINE" parameter as the
- * @returns {string} the XmlCclRequest compatible string.
- * @throws {TypeError} if an invalid parameter type is passed.
- */
-export function formattedParams(
-  params?: Array<CclCallParam | string | number>,
-  excludeMine?: boolean
-) {
-  params = params || [];
-
-  const processedParams: Array<CclCallParam> = params.map(param => {
-    if (typeof param === 'string') {
-      return { type: 'string', param: param };
-    } else if (typeof param === 'number') {
-      return { type: 'number', param: param };
-    } else if (isCclCallParam(param)) {
-      return param;
-    } else {
-      throw new TypeError(
-        `makeCclRequestAsync params can only be string, number, or CclCallParam`
-      );
-    }
-  });
-
-  const mineParam: CclCallParam = {
-    type: 'string',
-    param: 'MINE',
-  };
-
-  if (!excludeMine) {
-    processedParams.unshift(mineParam);
-  }
-  const paramString = processedParams
-    .map(({ type, param }) => (type === 'string' ? `'${param}'` : param))
-    .join(',');
-
-  return paramString;
-}
-
-/**
- * Parse the response text from an XmlCclRequest into a JSON object, if possible.
- * @param responseText - the response text from the XmlCclRequest.
- * @returns a parsed JSON object or undefined if the response text is not valid JSON.
- */
-export function parsedResponseText<T>(responseText: string): T | undefined {
-  try {
-    return JSON.parse(responseText) as T;
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      return undefined;
-    } else {
-      throw e;
-    }
-  }
 }
 
 const readyStateMap: Map<number, XmlCclReadyState> = new Map();
