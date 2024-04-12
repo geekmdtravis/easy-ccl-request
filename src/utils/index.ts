@@ -1,4 +1,4 @@
-import { CclCallParam } from "../makeCclRequestAsync";
+import { CclCallParam } from '../makeCclRequestAsync';
 
 /**
  * Check to see if the error reflects likely being outside of PowerChart.
@@ -25,11 +25,11 @@ export const warnAttemptedOrdersOutsideOfPowerChart = (
   console.warn(`window.MPAGES_EVENT('ORDERS', '${eventString}')`);
 };
 
-export /**
+/**
  * Check an object to see if it is a CclCallParam.
  * @param param - an object of any type to check if it is a CclCallParam.
  * @returns true if the object is a CclCallParam, false otherwise.
  */
-function isCclCallParam(param: any): param is CclCallParam {
+export function isCclCallParam(param: any): param is CclCallParam {
   return typeof param === 'object' && 'type' in param && 'param' in param;
 }

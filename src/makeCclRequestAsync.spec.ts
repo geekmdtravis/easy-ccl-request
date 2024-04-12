@@ -25,7 +25,6 @@ describe('makeCclRequestAsync', () => {
           // @ts-ignore
           send: (a: string) => {
             throw new Error('test error');
-            return null;
           },
         })),
       },
