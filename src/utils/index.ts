@@ -16,16 +16,6 @@ export function outsideOfPowerChartError(e: unknown) {
 }
 
 /**
- * A wrapper function for the `console.warn` function which logs a warning message.
- * @param eventString {string} - The event string to be logged.
- */
-export const warnAttemptedOrdersOutsideOfPowerChart = (
-  eventString: string
-): void => {
-  console.warn(`window.MPAGES_EVENT('ORDERS', '${eventString}')`);
-};
-
-/**
  * Check an object to see if it is a CclCallParam.
  * @param param - an object of any type to check if it is a CclCallParam.
  * @returns true if the object is a CclCallParam, false otherwise.
