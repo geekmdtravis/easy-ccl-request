@@ -1,5 +1,10 @@
 import { PowerChartReturn } from '.';
-import { isCclCallParam, outsideOfPowerChartError } from './utils';
+import {
+  isCclCallParam,
+  outsideOfPowerChartError,
+  logger,
+  Verbosity,
+} from './utils';
 
 /**
  * An input parameter for a CCL call. In internal testing, there were cases
@@ -104,10 +109,20 @@ export type CclRequestResponse<T> = PowerChartReturn & {
 export async function makeCclRequestAsync<T>(
   prg: string,
   params: Array<CclCallParam | string | number> = [],
-  excludeMine?: boolean
+  excludeMine?: boolean,
+  verbosity: Verbosity = 'none'
 ): Promise<CclRequestResponse<T>> {
-  if (prg.trim() === '')
-    throw new Error('The CCL program name cannot be empty.');
+  logger(verbosity, 'debug', `makeCclRequestAsync called with prg: ${prg}`, {
+    params,
+    excludeMine,
+    verbosity,
+  });
+
+  if (prg.trim() === '') {
+    const error = new Error('The CCL program name cannot be empty.');
+    logger(verbosity, 'error', error.message);
+    throw error;
+  }
 
   return new Promise<CclRequestResponse<T>>((resolve, reject) => {
     const res: CclRequestResponse<T> = {
@@ -120,43 +135,85 @@ export async function makeCclRequestAsync<T>(
       __request: undefined,
     };
     try {
+      logger(verbosity, 'info', `Making CCL request for program: ${prg}`);
       const req = window.external.XMLCclRequest();
 
       req.onreadystatechange = () => {
+        logger(
+          verbosity,
+          'debug',
+          `CCL request readyState changed to: ${req.readyState}`,
+          { readyState: req.readyState, status: req.status, request: req }
+        );
         const requestComplete = req.readyState === 4;
 
         if (!requestComplete) return;
 
+        logger(
+          verbosity,
+          'info',
+          `CCL request for program '${prg}' completed.`
+        );
+
         const successfulRequest = req.status >= 200 && req.status < 300;
         if (successfulRequest) {
+          logger(
+            verbosity,
+            'info',
+            `CCL request for program '${prg}' was successful.`,
+            { status: req.status, statusText: req.statusText }
+          );
           res.inPowerChart = true;
           res.code = req.status;
           res.result = statusCodeMap.get(req.status) || 'unknown';
           res.status = readyStateMap.get(req.readyState) || 'unknown';
           res.details = req.statusText;
-          res.data = parsedResponseText<T>(req.responseText);
+          res.data = parsedResponseText<T>(req.responseText, verbosity);
           res.__request = req;
+          logger(verbosity, 'debug', `Response data for '${prg}'`, res);
           resolve(res);
         } else {
-          reject(
-            new Error(
-              `Request failed with status: ${req.status} and status text: ${req.statusText}`
-            )
+          const error = new Error(
+            `Request failed with status: ${req.status} and status text: ${req.statusText}`
           );
+          logger(
+            verbosity,
+            'error',
+            `CCL request for program '${prg}' failed.`,
+            { status: req.status, statusText: req.statusText }
+          );
+          reject(error);
         }
       };
 
       req.onerror = () => {
-        reject(new Error('XMLCclRequest encountered a network error.'));
+        const error = new Error('XMLCclRequest encountered a network error.');
+        logger(
+          verbosity,
+          'error',
+          `CCL request for program '${prg}' encountered a network error.`
+        );
+        reject(error);
       };
 
       req.open('GET', `${prg}`);
-      req.send(formattedParams(params, excludeMine));
+      req.send(formattedParams(params, excludeMine, verbosity));
     } catch (e) {
       if (outsideOfPowerChartError(e)) {
+        logger(
+          verbosity,
+          'warning',
+          `Not in PowerChart environment. Returning mock response for '${prg}'.`
+        );
         res.inPowerChart = false;
         resolve(res);
       } else {
+        logger(
+          verbosity,
+          'error',
+          `An unexpected error occurred during CCL request for '${prg}'.`,
+          e
+        );
         reject(e);
       }
     }
@@ -173,7 +230,8 @@ export async function makeCclRequestAsync<T>(
  */
 export function formattedParams(
   params?: Array<CclCallParam | string | number>,
-  excludeMine?: boolean
+  excludeMine?: boolean,
+  verbosity: Verbosity = 'none'
 ) {
   params = params || [];
 
@@ -185,9 +243,11 @@ export function formattedParams(
     } else if (isCclCallParam(param)) {
       return param;
     } else {
-      throw new TypeError(
+      const error = new TypeError(
         `makeCclRequestAsync params can only be string, number, or CclCallParam`
       );
+      logger(verbosity, 'error', error.message, param);
+      throw error;
     }
   });
 
@@ -203,6 +263,7 @@ export function formattedParams(
     .map(({ type, param }) => (type === 'string' ? `'${param}'` : param))
     .join(',');
 
+  logger(verbosity, 'debug', 'Formatted CCL params:', { paramString });
   return paramString;
 }
 
@@ -211,13 +272,30 @@ export function formattedParams(
  * @param responseText - the response text from the XmlCclRequest.
  * @returns a parsed JSON object or undefined if the response text is not valid JSON.
  */
-export function parsedResponseText<T>(responseText: string): T | undefined {
+export function parsedResponseText<T>(
+  responseText: string,
+  verbosity: Verbosity = 'none'
+): T | undefined {
+  logger(verbosity, 'debug', 'Parsing response text:', { responseText });
   try {
-    return JSON.parse(responseText) as T;
+    const parsed = JSON.parse(responseText) as T;
+    logger(verbosity, 'debug', 'Successfully parsed response text.', {
+      parsed,
+    });
+    return parsed;
   } catch (e) {
     if (e instanceof SyntaxError) {
+      logger(verbosity, 'warning', 'Failed to parse response text as JSON.', {
+        responseText,
+      });
       return undefined;
     } else {
+      logger(
+        verbosity,
+        'error',
+        'An unexpected error occurred during response text parsing.',
+        e
+      );
       throw e;
     }
   }
@@ -238,3 +316,4 @@ statusCodeMap.set(418, 'im a teapot');
 statusCodeMap.set(492, 'non-fatal error');
 statusCodeMap.set(493, 'memory error');
 statusCodeMap.set(500, 'internal server exception');
+

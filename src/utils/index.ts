@@ -33,3 +33,45 @@ export /**
 function isCclCallParam(param: any): param is CclCallParam {
   return typeof param === 'object' && 'type' in param && 'param' in param;
 }
+
+export type Verbosity = 'none' | 'error' | 'warning' | 'info' | 'debug';
+
+/**
+ * A simple logger that logs messages based on the verbosity level.
+ * @param verbosity The current verbosity level.
+ * @param level The level of the message.
+ * @param message The message to log.
+ * @param data Optional data to log.
+ */
+export function logger(
+  verbosity: Verbosity,
+  level: 'error' | 'warning' | 'info' | 'debug',
+  message: string,
+  data?: any
+) {
+  const verbosityLevels = {
+    none: 0,
+    error: 1,
+    warning: 2,
+    info: 3,
+    debug: 4,
+  };
+
+  if (verbosityLevels[verbosity] >= verbosityLevels[level]) {
+    const logData = data ? { data } : {};
+    switch (level) {
+      case 'error':
+        console.error(message, logData);
+        break;
+      case 'warning':
+        console.warn(message, logData);
+        break;
+      case 'info':
+        console.info(message, logData);
+        break;
+      case 'debug':
+        console.debug(message, logData);
+        break;
+    }
+  }
+}
