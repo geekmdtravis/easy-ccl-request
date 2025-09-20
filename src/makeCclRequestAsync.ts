@@ -235,7 +235,7 @@ export function formattedParams(
 ) {
   params = params || [];
 
-  const processedParams: Array<CclCallParam> = params.map(param => {
+  const processedParams: Array<CclCallParam> = params.map((param) => {
     if (typeof param === 'string') {
       return { type: 'string', param: param };
     } else if (typeof param === 'number') {
@@ -316,4 +316,3 @@ statusCodeMap.set(418, 'im a teapot');
 statusCodeMap.set(492, 'non-fatal error');
 statusCodeMap.set(493, 'memory error');
 statusCodeMap.set(500, 'internal server exception');
-
