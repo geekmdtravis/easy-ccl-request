@@ -235,7 +235,7 @@ export function formattedParams(
 ) {
   params = params || [];
 
-  const processedParams: Array<CclCallParam> = params.map((param) => {
+  const processedParams: Array<CclCallParam> = params.map(param => {
     if (typeof param === 'string') {
       return { type: 'string', param: param };
     } else if (typeof param === 'number') {
