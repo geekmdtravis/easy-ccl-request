@@ -5,12 +5,19 @@ import {
   XmlCclResult,
   XmlCclReadyState,
 } from './makeCclRequestAsync';
+import { Verbosity } from './utils';
 
 // Export functions
 export { makeCclRequestAsync };
 
 // Export types; cannot use the `export type` syntax.
-export { CclCallParam, CclRequestResponse, XmlCclReadyState, XmlCclResult };
+export {
+  CclCallParam,
+  CclRequestResponse,
+  XmlCclReadyState,
+  XmlCclResult,
+  Verbosity,
+};
 
 export type PowerChartReturn = {
   inPowerChart: boolean;
