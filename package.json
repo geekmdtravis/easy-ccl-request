@@ -1,32 +1,37 @@
 {
-  "version": "1.0.2",
+  "name": "easy-ccl-request",
+  "version": "1.1.0",
   "license": "MIT",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "author": "geekmdtravis",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "engines": {
-    "node": ">=14",
-    "yarn": "please-use-npm"
+    "node": ">=18"
   },
   "scripts": {
-    "start": "tsdx watch",
-    "build": "tsdx build",
-    "test": "tsdx test --silent",
-    "test:watch": "tsdx test --watch --silent",
-    "test:watchall": "tsdx test --watchAll --silent",
-    "lint": "tsdx lint src",
-    "prepare": "tsdx build",
-    "size": "size-limit",
-    "analyze": "size-limit --why",
-    "demo": "npx node demo.js"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "tsdx lint"
-    }
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepare": "tsup",
+    "size": "size-limit"
   },
   "prettier": {
     "printWidth": 80,
@@ -34,38 +39,22 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "easy-ccl-request",
-  "author": "geekmdtravis",
-  "module": "dist/easy-ccl-request.esm.js",
   "size-limit": [
     {
-      "path": "dist/easy-ccl-request.cjs.production.min.js",
+      "path": "dist/index.cjs",
       "limit": "10 KB"
     },
     {
-      "path": "dist/easy-ccl-request.esm.js",
+      "path": "dist/index.js",
       "limit": "10 KB"
     }
   ],
   "devDependencies": {
-    "@size-limit/preset-small-lib": "7.0.5",
-    "@size-limit/webpack": "7.0.5",
-    "@size-limit/webpack-why": "7.0.5",
-    "husky": "7.0.4",
-    "size-limit": "7.0.5",
-    "tsdx": "0.14.1",
-    "tslib": "2.3.1",
-    "typescript": "4.5.4"
-  },
-  "jest": {
-    "verbose": true,
-    "silent": true,
-    "collectCoverage": true,
-    "testPathIgnorePatterns": [
-      "index.ts"
-    ],
-    "coveragePathIgnorePatterns": [
-      "index.ts"
-    ]
+    "@size-limit/preset-small-lib": "12.0.1",
+    "jsdom": "29.0.0",
+    "size-limit": "12.0.1",
+    "tsup": "8.5.1",
+    "typescript": "5.5.4",
+    "vitest": "4.1.0"
   }
 }
