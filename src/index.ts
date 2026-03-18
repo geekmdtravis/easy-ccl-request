@@ -1,23 +1,13 @@
-import {
+export { makeCclRequestAsync } from './makeCclRequestAsync';
+
+export type {
   CclCallParam,
   CclRequestResponse,
-  makeCclRequestAsync,
-  XmlCclResult,
   XmlCclReadyState,
+  XmlCclResult,
 } from './makeCclRequestAsync';
-import { Verbosity } from './utils';
 
-// Export functions
-export { makeCclRequestAsync };
-
-// Export types; cannot use the `export type` syntax.
-export {
-  CclCallParam,
-  CclRequestResponse,
-  XmlCclReadyState,
-  XmlCclResult,
-  Verbosity,
-};
+export type { Verbosity } from './utils';
 
 export type PowerChartReturn = {
   inPowerChart: boolean;
@@ -32,7 +22,7 @@ declare global {
    * [More Info](https://wiki.cerner.com/display/public/MPDEVWIKI/XMLCCLREQUEST)
    */
   class XMLCclRequest {
-    options: Object;
+    options: object;
     readyState: number;
     responseText: string;
     status: number;
@@ -47,7 +37,7 @@ declare global {
     blobIn: string;
     url: string;
     method: string;
-    requestHeaders: Object;
+    requestHeaders: object;
     requestLen: number;
     onreadystatechange: () => void;
     onerror: () => void;

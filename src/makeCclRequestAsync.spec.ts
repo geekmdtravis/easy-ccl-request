@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   formattedParams,
   CclCallParam,
@@ -17,7 +18,7 @@ describe('makeCclRequestAsync', () => {
     Object.defineProperty(window, 'external', {
       writable: true,
       value: {
-        XMLCclRequest: jest.fn().mockImplementation(() => ({
+        XMLCclRequest: vi.fn().mockImplementation(() => ({
           // @ts-ignore
           open: (a: string, b: string) => {
             return null;
@@ -110,7 +111,7 @@ describe('parsedResponseText', () => {
   });
   it('propagates an error if an unexpected error occurs', () => {
     const responseText = 'test';
-    jest.spyOn(JSON, 'parse').mockImplementationOnce(() => {
+    vi.spyOn(JSON, 'parse').mockImplementationOnce(() => {
       throw new Error('test error');
     });
     expect(() => parsedResponseText(responseText)).toThrowError();
