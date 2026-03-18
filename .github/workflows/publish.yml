@@ -37,7 +37,8 @@ jobs:
     name: Publish to npm
     needs: test # Only runs if the test job passes
     runs-on: ubuntu-latest
-    
+    environment: easy-ccl-request
+
     permissions:
       contents: read
       id-token: write # CRITICAL: Required for OIDC / Trusted Publishing
