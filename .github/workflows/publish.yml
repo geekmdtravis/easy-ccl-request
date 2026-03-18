@@ -58,6 +58,8 @@ jobs:
       - name: Build package
         run: npm run build
 
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
       - name: Publish to npm
-        # --provenance links this package to this exact GitHub Action run
         run: npm publish --provenance --access public
