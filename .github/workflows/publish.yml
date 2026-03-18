@@ -1,11 +1,13 @@
 name: NPM Publish
+
 on:
   release:
     types: [published]
-jobs:
-  build:
-    name: Build, lint, and test on Node ${{ matrix.node }} and ${{ matrix.os }}
 
+jobs:
+  # Job 1: Run tests across the matrix to ensure cross-platform compatibility
+  test:
+    name: Test on Node ${{ matrix.node }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -20,22 +22,42 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          registry-url: https://registry.npmjs.org/
           cache: 'npm'
 
-      - name: Install deps and build (with cache)
+      - name: Install deps
         uses: bahmutov/npm-install@v1
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint and Test
+        run: |
+          npm run lint
+          npm run test --ci --coverage --maxWorkers=2
 
-      - name: Test
-        run: npm run test --ci --coverage --maxWorkers=2
+  # Job 2: Actually publish the package using OIDC (Trusted Publishing)
+  publish:
+    name: Publish to npm
+    needs: test # Only runs if the test job passes
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write # CRITICAL: Required for OIDC / Trusted Publishing
 
-      - name: Build
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install deps
+        uses: bahmutov/npm-install@v1
+
+      - name: Build package
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+        # --provenance links this package to this exact GitHub Action run
+        run: npm publish --provenance --access public
