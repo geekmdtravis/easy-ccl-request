@@ -33,6 +33,236 @@ describe('makeCclRequestAsync', () => {
 
     await expect(makeCclRequestAsync('TEST')).rejects.toThrow();
   });
+
+  /**
+   * Helper that installs a fake `window.external.XMLCclRequest` whose `send`
+   * synchronously triggers the production-code's `onreadystatechange` (and/or
+   * `onerror`) handlers using the provided fake response fields.
+   */
+  type FakeResponse = {
+    status?: number;
+    statusText?: string;
+    responseText?: string;
+    readyState?: number;
+    /** If true, send invokes onerror instead of onreadystatechange. */
+    fireError?: boolean;
+    /**
+     * If provided, send fires onreadystatechange once per entry in order,
+     * mutating the request fields before each call. Useful for simulating
+     * intermediate readyStates.
+     */
+    sequence?: Array<{
+      status?: number;
+      statusText?: string;
+      responseText?: string;
+      readyState?: number;
+    }>;
+    openSpy?: ReturnType<typeof vi.fn>;
+    sendSpy?: ReturnType<typeof vi.fn>;
+  };
+
+  function installFakeXMLCclRequest(fake: FakeResponse) {
+    Object.defineProperty(window, 'external', {
+      writable: true,
+      value: {
+        XMLCclRequest: vi.fn().mockImplementation(() => {
+          const reqObj: any = {
+            readyState: 0,
+            status: 0,
+            statusText: '',
+            responseText: '',
+            onreadystatechange: undefined,
+            onerror: undefined,
+            open: function (method: string, url: string) {
+              if (fake.openSpy) fake.openSpy(method, url);
+            },
+            send: function (body: string) {
+              if (fake.sendSpy) fake.sendSpy(body);
+              if (fake.fireError) {
+                if (typeof this.onerror === 'function') this.onerror();
+                return;
+              }
+              if (fake.sequence && fake.sequence.length > 0) {
+                for (const step of fake.sequence) {
+                  if (step.readyState !== undefined)
+                    this.readyState = step.readyState;
+                  if (step.status !== undefined) this.status = step.status;
+                  if (step.statusText !== undefined)
+                    this.statusText = step.statusText;
+                  if (step.responseText !== undefined)
+                    this.responseText = step.responseText;
+                  if (typeof this.onreadystatechange === 'function')
+                    this.onreadystatechange();
+                }
+                return;
+              }
+              this.readyState =
+                fake.readyState !== undefined ? fake.readyState : 4;
+              this.status = fake.status !== undefined ? fake.status : 200;
+              this.statusText =
+                fake.statusText !== undefined ? fake.statusText : '';
+              this.responseText =
+                fake.responseText !== undefined ? fake.responseText : '';
+              if (typeof this.onreadystatechange === 'function')
+                this.onreadystatechange();
+            },
+          };
+          return reqObj;
+        }),
+      },
+    });
+  }
+
+  it('rejects when prg is an empty string', async () => {
+    await expect(makeCclRequestAsync('')).rejects.toThrow(
+      'The CCL program name cannot be empty.'
+    );
+  });
+
+  it('rejects when prg is whitespace only', async () => {
+    await expect(makeCclRequestAsync('   ')).rejects.toThrow(
+      'The CCL program name cannot be empty.'
+    );
+  });
+
+  it('resolves with parsed data on HTTP 200', async () => {
+    installFakeXMLCclRequest({
+      status: 200,
+      readyState: 4,
+      responseText: '{"foo":"bar"}',
+      statusText: 'OK',
+    });
+
+    const res = await makeCclRequestAsync<{ foo: string }>('TEST');
+    expect(res.inPowerChart).toBe(true);
+    expect(res.code).toBe(200);
+    expect(res.result).toBe('success');
+    expect(res.status).toBe('completed');
+    expect(res.details).toBe('OK');
+    expect(res.data).toEqual({ foo: 'bar' });
+    expect(res.__request).toBeDefined();
+  });
+
+  it('maps a 2xx code without an explicit status mapping (e.g. 204) to "unknown"', async () => {
+    installFakeXMLCclRequest({
+      status: 204,
+      readyState: 4,
+      responseText: '',
+      statusText: 'No Content',
+    });
+
+    const res = await makeCclRequestAsync('TEST');
+    expect(res.code).toBe(204);
+    expect(res.result).toBe('unknown');
+    expect(res.status).toBe('completed');
+    expect(res.details).toBe('No Content');
+  });
+
+  it.each([
+    { status: 405, statusText: 'Method Not Allowed' },
+    { status: 492, statusText: 'Non-Fatal Error' },
+    { status: 500, statusText: 'Internal Server Error' },
+  ])(
+    'rejects on non-2xx status $status with message containing code and statusText',
+    async ({ status, statusText }) => {
+      installFakeXMLCclRequest({
+        status,
+        readyState: 4,
+        responseText: '',
+        statusText,
+      });
+
+      await expect(makeCclRequestAsync('TEST')).rejects.toThrow(
+        new RegExp(`${status}.*${statusText}`)
+      );
+    }
+  );
+
+  it('rejects when onerror fires', async () => {
+    installFakeXMLCclRequest({ fireError: true });
+    await expect(makeCclRequestAsync('TEST')).rejects.toThrow(
+      'XMLCclRequest encountered a network error.'
+    );
+  });
+
+  it('does nothing while readyState < 4 and resolves once readyState reaches 4', async () => {
+    installFakeXMLCclRequest({
+      sequence: [
+        { readyState: 1, status: 0, statusText: '', responseText: '' },
+        {
+          readyState: 4,
+          status: 200,
+          statusText: 'OK',
+          responseText: '{"ok":true}',
+        },
+      ],
+    });
+
+    const res = await makeCclRequestAsync<{ ok: boolean }>('TEST');
+    expect(res.code).toBe(200);
+    expect(res.result).toBe('success');
+    expect(res.status).toBe('completed');
+    expect(res.data).toEqual({ ok: true });
+  });
+
+  it('calls req.open with ("GET", prg) and req.send with formatted params (excludeMine=false)', async () => {
+    const openSpy = vi.fn();
+    const sendSpy = vi.fn();
+    installFakeXMLCclRequest({
+      status: 200,
+      readyState: 4,
+      responseText: '{}',
+      statusText: 'OK',
+      openSpy,
+      sendSpy,
+    });
+
+    await makeCclRequestAsync(
+      'MY_PRG',
+      [{ type: 'string', param: 'a' }, 1],
+      false
+    );
+    expect(openSpy).toHaveBeenCalledWith('GET', 'MY_PRG');
+    expect(sendSpy).toHaveBeenCalledWith("'MINE','a',1");
+  });
+
+  it('calls req.send with formatted params (excludeMine=true)', async () => {
+    const openSpy = vi.fn();
+    const sendSpy = vi.fn();
+    installFakeXMLCclRequest({
+      status: 200,
+      readyState: 4,
+      responseText: '{}',
+      statusText: 'OK',
+      openSpy,
+      sendSpy,
+    });
+
+    await makeCclRequestAsync(
+      'MY_PRG',
+      [{ type: 'string', param: 'a' }, 1],
+      true
+    );
+    expect(openSpy).toHaveBeenCalledWith('GET', 'MY_PRG');
+    expect(sendSpy).toHaveBeenCalledWith("'a',1");
+  });
+
+  it('returns mock response when XMLCclRequest throws outside of PowerChart', async () => {
+    Object.defineProperty(window, 'external', {
+      writable: true,
+      value: {
+        XMLCclRequest: vi.fn().mockImplementation(() => {
+          throw new TypeError('XMLCclRequest is not a function');
+        }),
+      },
+    });
+
+    const res = await makeCclRequestAsync('TEST');
+    expect(res.inPowerChart).toBe(false);
+    expect(res.code).toBe(418);
+    expect(res.result).toBe('im a teapot');
+    expect(res.status).toBe('uninitialized');
+  });
 });
 
 describe('processCclRequestParams', () => {
